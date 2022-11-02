@@ -1,0 +1,198 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder,OrdinalEncoder
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+np.set_printoptions(suppress=True)
+from scipy import stats
+pd.options.display.float_format = '{:.3f}'.format
+np.set_printoptions(threshold=3)
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.ensemble import StackingRegressor
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.svm import SVR
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.linear_model import LinearRegression
+import warnings
+warnings.filterwarnings('ignore')
+from sklearn.metrics import r2_score,mean_squared_error
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import AdaBoostRegressor
+import xgboost as xgb
+
+
+dataset = pd.read_csv('cars.csv')
+dataset
+
+
+# Data Analysis
+print(dataset['transmission'].unique())
+print(dataset['owner'].unique())
+
+
+# Data Preprocessing
+
+le = LabelEncoder()
+dataset['transmission'] = le.fit_transform(dataset['transmission'])
+oe = OrdinalEncoder(categories=[['Test Drive Car','First Owner','Second Owner',
+                                 'Third Owner','Fourth & Above Owner']],dtype=int)
+dataset[['owner']] = oe.fit_transform(dataset[['owner']])
+dataset
+
+
+# Outlier Removal
+sns.boxplot(data = dataset['selling_price'])
+plt.show()
+z = np.abs(stats.zscore(dataset['selling_price']))
+outliers = np.where(z>3)[0]
+print('Outlier Indexes :',outliers)
+dataset.drop(outliers,inplace = True)
+
+
+X = dataset[['year_bought','km_driven','transmission','owner']]
+y = dataset['selling_price']
+X
+
+
+y
+
+
+# Feature Importance
+correl_matrix = dataset.corr().round(2)
+sns.heatmap(data=correl_matrix, annot=True)
+plt.show()
+
+
+# Split dataset into train and test set
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3,random_state=13)
+X_train
+
+
+# Normalization
+
+scaler = MinMaxScaler()
+X_train[['year_bought','km_driven']] = scaler.fit_transform(
+    X_train[['year_bought','km_driven']])
+X_test[['year_bought','km_driven']] = scaler.transform(
+    X_test[['year_bought','km_driven']])
+X_train
+
+
+# Choosing the base models : Decision Tree, Support Vector Regressor, KNN Regressor
+estimators = [('dt', DecisionTreeRegressor(random_state=13)),('svr', SVR()),
+             ('knr',KNeighborsRegressor(n_neighbors = 40))]
+             
+             
+# Choosing the meta model : Linear Regression
+stacker = StackingRegressor(estimators=estimators,final_estimator=LinearRegression())
+stacker.fit(X_train,y_train)
+
+
+# Evaluating performance of model
+
+y_train_pred = stacker.predict(X_train)
+y_test_pred = stacker.predict(X_test)
+
+print('Training set performance :')
+print('R2 Score : ',round(r2_score(y_train,y_train_pred),3))
+print('RMSE : ',np.sqrt(mean_squared_error(y_train,y_train_pred)))
+print()
+print()
+print('Test set performance :')
+print('R2 Score : ',round(r2_score(y_test,y_test_pred),3))
+print('RMSE : ',np.sqrt(mean_squared_error(y_test,y_test_pred)))
+pred_stack = y_test_pred
+
+
+# Bagging 
+# Using Random Forest for Bagging which contain homogeneous models : Decision Trees
+
+bagger = RandomForestRegressor(random_state=13,n_estimators=200)
+bagger.fit(X_train,y_train)
+
+
+# Evaluating performance of model
+
+y_train_pred = bagger.predict(X_train)
+y_test_pred = bagger.predict(X_test)
+
+print('Training set performance :')
+print('R2 Score : ',round(r2_score(y_train,y_train_pred),3))
+print('RMSE : ',np.sqrt(mean_squared_error(y_train,y_train_pred)))
+print()
+print()
+print('Test set performance :')
+print('R2 Score : ',round(r2_score(y_test,y_test_pred),3))
+print('RMSE : ',np.sqrt(mean_squared_error(y_test,y_test_pred)))
+pred_rf = y_test_pred
+
+
+# Boosting - AdaBoost
+# Using AdaBoost with Decision Trees as base estimator
+
+ada_booster = AdaBoostRegressor(random_state=13,n_estimators=100)
+ada_booster.fit(X_train,y_train)
+
+
+# Evaluating performance of model
+
+y_train_pred = ada_booster.predict(X_train)
+y_test_pred = ada_booster.predict(X_test)
+
+print('Training set performance :')
+print('R2 Score : ',round(r2_score(y_train,y_train_pred),3))
+print('RMSE : ',np.sqrt(mean_squared_error(y_train,y_train_pred)))
+print()
+print()
+print('Test set performance :')
+print('R2 Score : ',round(r2_score(y_test,y_test_pred),3))
+print('RMSE : ',np.sqrt(mean_squared_error(y_test,y_test_pred)))
+pred_ada = y_test_pred
+
+
+# Boosting - XGBoost
+xg_booster = xgb.XGBRegressor(objective ='reg:squarederror',
+                              learning_rate = 0.1,n_estimators = 250)
+xg_booster.fit(X_train,y_train)
+
+
+# Evaluating performance of model
+
+y_train_pred = xg_booster.predict(X_train)
+y_test_pred = xg_booster.predict(X_test)
+
+print('Training set performance :')
+print('R2 Score : ',round(r2_score(y_train,y_train_pred),3))
+print('RMSE : ',np.sqrt(mean_squared_error(y_train,y_train_pred)))
+print()
+print()
+print('Test set performance :')
+print('R2 Score : ',round(r2_score(y_test,y_test_pred),3))
+print('RMSE : ',np.sqrt(mean_squared_error(y_test,y_test_pred)))
+pred_xg = y_test_pred
+
+
+# Comparison of Results
+result = pd.DataFrame({'Stacking':[0.65,0.451],'Bagging (RF)':[0.778,0.363],
+                       'Boosting (AdaBoost)':[0.434,0.395],
+                      'Boosting (XGBoost)':[0.74,0.41]},
+                      index=['R2 (Train)','R2 (Test)'])
+result
+
+
+# Actual vs Predicted
+
+plt.figure(figsize=(5, 4))
+ax = plt.axes()
+ax.scatter(range(len(y_test)),y_test)
+ax.scatter(range(len(y_test)),pred_stack)
+ax.scatter(range(len(y_test)),pred_rf)
+ax.scatter(range(len(y_test)),pred_ada)
+ax.scatter(range(len(y_test)),pred_xg)
+ax.ticklabel_format(style='plain')
+plt.legend(['Actual','Stack','Bagging RF','AdaBoost','XGBoost'])
+plt.show()
+
+
+       

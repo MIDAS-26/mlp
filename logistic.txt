@@ -1,0 +1,126 @@
+# Importing libraries
+
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+from sklearn.metrics import classification_report,confusion_matrix
+threshold = 0.5
+
+
+# Reading dataset
+
+dataset = pd.read_csv('bank.csv')
+dataset
+
+
+# Checking min and max values of each column
+
+dataset.describe()
+
+
+X = dataset[['variance','skewness','curtosis','entropy']]
+y = dataset['class']
+X.insert(0, 'x0', 1)
+X
+
+
+y
+
+
+# Splitting dataset into training and testing set : 75% for training
+
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size = 0.25, 
+                                                    random_state = 13)
+X_train
+
+
+# Functions required for Logistic Regression
+
+def sigmoid(z):
+    return 1/(1+np.exp(-z))
+
+def predict(X, theta):
+    return sigmoid(np.matmul(X,theta))
+    
+def calculate_cost(y_actual,y_pred):
+    return (-1/len(y_actual))*(np.sum(((y_actual)*np.log10(y_pred)) + 
+                                      ((1-y_actual)*np.log10(1-y_pred))))
+
+def calculate_gradient(X,y_actual,y_pred):
+    return np.array(np.sum(np.multiply(y_pred-y_actual,X),axis=0)).reshape(len(X[0]),1)
+
+def fit(X,y,learning_rate=0.0001,epochs=30):
+    X = X.values
+    y = y.values.reshape(len(y),1)
+    theta = np.array([0.3,0.2,0.4,0.5,0.6]).reshape(len(X[0]),1)
+    cost = []
+    for epoch in range(1,epochs+1):
+        y_pred = predict(X,theta)
+        y_actual = y
+        J = calculate_cost(y_actual,y_pred)
+        cost.append(J)
+        print('Epoch: ',epoch,', Cost Function Value (J) = ',"{:.3f}".format(J),
+              ', Theta values : ',theta.T)
+        grads = calculate_gradient(X,y_actual,y_pred)
+        theta = theta - (learning_rate*grads)
+    return theta,cost
+    
+    
+# Training the Logistic Regression model to learn parameter vector theta
+
+theta, cost = fit(X_train,y_train)
+
+
+print('Learned parameter vector Theta : ')
+print(theta)
+
+
+# Plotting Cost function value vs no. of epochs
+
+plt.figure(figsize=(5, 4))
+ax = plt.axes()
+plt.plot(range(1,31),cost)
+plt.title('Cost Function value vs no. of epochs')
+ax.set_xlabel('Epoch')
+ax.set_ylabel('Cost Function Value (J)')
+plt.show()
+
+
+# Evaluating model performance on Training set
+
+y_train_pred = [0 if value < threshold else 1 
+                for value in predict(X_train.values,theta).flatten()]
+print('Training set performance : \n')
+print(classification_report(y_train,y_train_pred))
+
+
+# Evaluating model performance on Test set
+
+y_test_pred = [0 if value < threshold else 1 
+               for value in predict(X_test.values,theta).flatten()]
+print('Test set performance : \n')
+print(classification_report(y_test,y_test_pred))
+
+
+# Confusion Matrix for Test set
+
+print('Confusion Matrix :\n')
+print(confusion_matrix(y_test,y_test_pred))
+
+
+result = pd.DataFrame({'Actual':y_test,'Predicted':y_test_pred})
+result
+
+
+# Classifying note using user input
+
+X_ip = [1] + list(map(float,input("Enter variance, skewness, curtosis,",
+                                  " entropy of bank note image wavelet transform : ")
+                      .split()))[:4]
+X_ip = np.array(X_ip).reshape(1,len(X_ip))
+prediction = [0 if value < threshold else 1 for value in predict(X_ip,theta).flatten()]
+print('Predicted class label : ',prediction[0])
+
+
+    

@@ -1,0 +1,71 @@
+# Importing Libraries
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+
+
+# Displaying the Dataset
+
+dataset = pd.read_csv('tvmarketing.csv')
+dataset
+
+
+# Visualizing data using Scatterplot
+
+X = dataset['TV']
+y = dataset['Sales']
+plt.scatter(X,y)
+plt.title('Sales vs Marketing')
+plt.xlabel('TV Marketing Budget')
+plt.ylabel('Sales')
+plt.show()
+
+
+# Split dataset into train and test set
+
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.2,random_state=13)
+X_train
+
+
+# Simple Linear Regression - Analytical Method - Train and Test
+
+def calculate_b1(X,y):
+    return np.dot((X-np.mean(X)),(y-np.mean(y)))/np.sum(np.square(X-np.mean(X)));
+
+def calculate_b0(X,y,b1):
+    return (np.mean(y) - (b1*np.mean(X)))
+
+def predict(X,b0,b1):
+    return (b0 + (b1*X))
+
+b1 = calculate_b1(X_train,y_train)
+b0 = calculate_b0(X_train,y_train,b1)
+print('B0 (intercept) = ',b0)
+print('B1 (slope) = ',b1)
+
+y_pred_analytical = predict(X_test,b0,b1)
+
+results = pd.DataFrame({'Actual':y_test,'Analytical':y_pred_analytical})
+results
+
+
+# Simple Linear Regression - Analytical Method - Prediction
+
+X_ip = float(input('Enter value of marketing budget : '))
+print('Predicted Sales value is : ',predict(X_ip,b0,b1))
+
+
+# Simple Linear Regression - Analytical Method - Regression Line
+
+plt.figure(figsize=(5, 4))
+ax = plt.axes()
+ax.scatter(X,y)
+ax.plot(X,predict(X,b0,b1),color='red')
+plt.title('Regression Line - Analytical Method')
+ax.set_xlabel('TV Marketing Budget')
+ax.set_ylabel('Sales')
+plt.show()
+
+

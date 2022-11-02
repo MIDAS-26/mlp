@@ -1,0 +1,132 @@
+# Importing Libraries
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder,OrdinalEncoder
+np.set_printoptions(suppress=True)
+from scipy import stats
+pd.options.display.float_format = '{:.3f}'.format
+from sklearn.metrics import r2_score
+np.set_printoptions(threshold=3)
+
+
+# Displaying the Dataset
+
+dataset = pd.read_csv('cars.csv')
+dataset
+
+
+# Data Analysis
+
+print(dataset['transmission'].unique())
+print(dataset['owner'].unique())
+
+
+# Data Preprocessing
+
+le = LabelEncoder()
+dataset['transmission'] = le.fit_transform(dataset['transmission'])
+
+oe = OrdinalEncoder(categories=[['Test Drive Car','First Owner','Second Owner',
+                                 'Third Owner','Fourth & Above Owner']],dtype=int)
+dataset[['owner']] = oe.fit_transform(dataset[['owner']])
+dataset
+
+
+# Outlier Removal
+
+sns.boxplot(data = dataset['selling_price'])
+plt.show()
+z = np.abs(stats.zscore(dataset['selling_price']))
+outliers = np.where(z>3)[0]
+print('Outlier Indexes :',outliers)
+dataset.drop(outliers,inplace = True)
+
+
+X = dataset[['year_bought','km_driven','transmission','owner']]
+y = dataset['selling_price']
+X.insert(0, 'x0', 1)
+X
+
+
+y
+
+
+# Feature Importance
+
+correl_matrix = dataset.corr().round(2)
+sns.heatmap(data=correl_matrix, annot=True)
+plt.show()
+
+
+# Split dataset into train and test set
+
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.2,random_state=13)
+X_train
+
+
+X_train = X_train.values
+print('X :')
+print(X_train)
+print()
+print('Dimensions : ',X_train.shape)
+
+
+y_train = y_train.values.reshape(len(y_train),1)
+print('Y :')
+print(y_train)
+print()
+print('Dimensions : ',y_train.shape)
+
+
+# Calculate parameter vector theta
+
+def calculate_theta(X,y):
+    return np.matmul(np.matmul(np.linalg.inv(np.matmul(X.T,X)),
+           X.T),y)
+
+theta = calculate_theta(X_train,y_train)
+print('Parameters of MLR model : ')
+print(theta)
+
+
+# Predict on Test Set
+
+def predict(theta,X):
+    return np.matmul(X,theta)
+    
+y_pred = predict(theta,X_test.values)
+print('Predicted Selling Prices : ')
+print(y_pred)
+
+
+results = pd.DataFrame({'Actual':y_test,'Predicted':y_pred.flatten()})
+results
+
+
+X_ip = [1] + list(map(int,input("Enter year_bought, km_driven, transmission, owner : ").split()))[:4]
+X_ip = np.array(X_ip).reshape(1,len(X_ip))
+print('Predicted Selling Price of car is : ',predict(theta,X_ip)[0][0])
+
+
+# Multiple Linear Regression - Actual vs Predicted
+
+plt.figure(figsize=(5, 4))
+ax = plt.axes()
+ax.scatter(range(len(y_test)),y_test)
+ax.scatter(range(len(y_test)),y_pred)
+ax.ticklabel_format(style='plain')
+plt.legend(['Actual','Predicted'])
+plt.show()
+
+
+# Evaluate Model
+
+print('R2 Score on train set : ',r2_score(y_train,
+                                 predict(theta,X_train).flatten()))
+print('R2 Score on test set : ',r2_score(y_test,y_pred))
+
+

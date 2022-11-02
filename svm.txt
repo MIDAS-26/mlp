@@ -1,0 +1,136 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder,MinMaxScaler
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
+from sklearn.metrics import classification_report,confusion_matrix,ConfusionMatrixDisplay
+import warnings
+warnings.filterwarnings('ignore')
+
+
+dataset = pd.read_csv('churn.csv')
+dataset
+
+
+# EDA
+
+print('Columns : ',list(dataset.columns))
+print()
+print('Number of missing values : ',dataset.isnull().sum().sum())
+print()
+dataset.describe()
+
+
+# Data Analysis
+
+print(dataset['Geography'].unique())
+print(dataset['Gender'].unique())
+
+
+# Data Preprocessing
+
+le = LabelEncoder()
+dataset['Gender'] = le.fit_transform(dataset['Gender'])
+
+dataset = pd.get_dummies(dataset,columns = ['Geography'])
+dataset
+
+
+dataset[['Geography_France','Geography_Germany',
+         'Geography_Spain','EstimatedSalary','Exited']]
+         
+         
+# Feature Importance
+
+plt.figure(figsize=(10, 4))
+correl_matrix = dataset.corr().round(2)
+sns.heatmap(data=correl_matrix, annot=True)
+plt.show()
+
+
+X = dataset[['Age','Geography_Germany','IsActiveMember','Balance','Gender']]
+y = dataset['Exited']
+
+X
+
+
+y
+
+
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3,
+                                                        random_state=13)
+X_train
+
+
+# Scaling
+
+scaler = MinMaxScaler()
+X_train[['Age','Balance']] = scaler.fit_transform(
+    X_train[['Age','Balance']])
+X_test[['Age','Balance']] = scaler.transform(
+    X_test[['Age','Balance']])
+X_train
+
+
+svc_rbf1 = SVC(kernel='rbf',random_state=13,C=1)
+svc_rbf1.fit(X_train,y_train)
+y_pred_rbf1 = svc_rbf1.predict(X_test)
+
+print('Model performance on Training Set : \n')
+print(classification_report(y_train,svc_rbf1.predict(X_train)))
+print()
+print()
+print('Model performance on Test Set : \n')
+print(classification_report(y_test,y_pred_rbf1))
+print()
+print()
+
+
+svc_rbf2 = SVC(kernel='rbf',random_state=13,C=10)
+svc_rbf2.fit(X_train,y_train)
+y_pred_rbf2 = svc_rbf2.predict(X_test)
+
+print('Model performance on Training Set : \n')
+print(classification_report(y_train,svc_rbf2.predict(X_train)))
+print()
+print()
+print('Model performance on Test Set : \n')
+print(classification_report(y_test,y_pred_rbf2))
+print()
+print()
+
+
+svc_rbf3 = SVC(kernel='rbf',random_state=13,C=100)
+svc_rbf3.fit(X_train,y_train)
+y_pred_rbf3 = svc_rbf3.predict(X_test)
+
+print('Model performance on Training Set : \n')
+print(classification_report(y_train,svc_rbf3.predict(X_train)))
+print()
+print()
+print('Model performance on Test Set : \n')
+print(classification_report(y_test,y_pred_rbf3))
+print()
+print()
+
+
+Conclusion : Best SVM with RBF kernel obtained by setting C=10 or C=100
+
+
+kernel='poly'
+kernel-'linear'
+
+
+# Taking user input for prediction
+
+X_ip = list(map(float,
+       input("Enter Age, Geography_Germany, isActiveMember, Balance, Gender : ")
+                .split()))[:5]
+X_test = X_test.reset_index(drop=True)
+X_test[['Age','Balance']] = scaler.inverse_transform(X_test[['Age','Balance']])
+X_test.loc[len(X_test.index)] = X_ip
+X_test[['Age','Balance']] = scaler.transform(X_test[['Age','Balance']])
+print('Predicted class : ',svc_rbf3.predict(X_test.iloc[[-1]])[0])
+X_test.drop(index=X_test.index[-1], axis=0,inplace=True)
