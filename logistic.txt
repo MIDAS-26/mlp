@@ -123,4 +123,11 @@ prediction = [0 if value < threshold else 1 for value in predict(X_ip,theta).fla
 print('Predicted class label : ',prediction[0])
 
 
-    
+********************
+from sklearn.linear_model import LogisticRegression
+from sklearn import metrics
+
+logreg = LogisticRegression()
+logreg.fit(X_train, y_train)
+y_pred = logreg.predict(X_test)
+print('Accuracy of logistic regression classifier on test set: {:.2f}'.format(logreg.score(X_test, y_test)))
