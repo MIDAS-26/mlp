@@ -1,0 +1,105 @@
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from math import sqrt
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score, mean_squared_error
+
+# stacking
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import LinearSVC
+from vecstack import stacking
+from sklearn.ensemble import StackingClassifier
+
+# bagging
+from sklearn.ensemble import RandomForestClassifier
+
+# boosting
+from sklearn.ensemble import AdaBoostClassifier
+import xgboost as xgb
+
+df=pd.read_csv('sample_data/heart.csv')
+df.head()
+
+df.isnull().sum()
+df.describe().T
+
+categorical_cols=['Sex', 'ChestPainType', 'RestingECG', 'ExerciseAngina', 'ST_Slope']
+df[categorical_cols].describe()
+
+df.info()
+
+plt.figure(figsize=(10,8))
+sns.heatmap(df.corr(), annot=True)
+
+df=pd.get_dummies(data=df, columns=categorical_cols)
+df.sample(10)
+
+
+X=df.drop('HeartDisease', axis=1)
+y=df['HeartDisease']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=3)
+
+pipeline=Pipeline([
+    ('std_scaler', StandardScaler())
+])
+scaled_X_train=pipeline.fit_transform(X_train)
+scaled_X_test=pipeline.transform(X_test)
+
+scaled_X_train
+
+"""## ************************************Stacking************************************"""
+lgc=LogisticRegression()
+knnc=KNeighborsClassifier()
+svmc=LinearSVC(max_iter=2000)
+dtc=DecisionTreeClassifier()
+
+# Stacking -1
+stk_train, stk_test=stacking([knnc,svmc,dtc], scaled_X_train, y_train, scaled_X_test, regression=False, shuffle=True, random_state=10)
+final_model=lgc
+final_model.fit(stk_train, y_train)
+y_pred=final_model.predict(stk_test)
+print(f"Accuracy : {accuracy_score(y_test, y_pred)*100} %")
+print(f"RMSE : {sqrt(mean_squared_error(y_test, y_pred))}")
+
+# Stacking -2
+estimators=[
+    ('knn', knnc),
+    ('svm', svmc),
+    ('dt', dtc),
+    ('lg', lgc)
+]
+stkc= StackingClassifier(estimators)
+stkc.fit(scaled_X_train, y_train)
+y_pred=stkc.predict(scaled_X_test)
+print(f"Accuracy : {accuracy_score(y_test, y_pred)*100} %")
+print(f"RMSE : {sqrt(mean_squared_error(y_test, y_pred))}")
+
+
+"""## ************************************Bagging************************************"""
+rfc=RandomForestClassifier(random_state=5)
+rfc.fit(scaled_X_train, y_train)
+y_pred=rfc.predict(scaled_X_test)
+print(f"Accuracy : {accuracy_score(y_test, y_pred)*100} %")
+print(f"RMSE : {sqrt(mean_squared_error(y_test, y_pred))}")
+
+
+"""## ************************************Boosting************************************"""
+# XG Boosting
+xgbc=xgb.XGBClassifier(n_estimators=40)
+xgbc.fit(scaled_X_train, y_train)
+y_pred=xgbc.predict(scaled_X_test)
+print(f"Accuracy : {accuracy_score(y_test, y_pred)*100} %")
+print(f"RMSE : {sqrt(mean_squared_error(y_test, y_pred))}")
+
+# Ada Boosting
+abc=AdaBoostClassifier()
+abc.fit(scaled_X_train, y_train)
+y_pred=abc.predict(scaled_X_test)
+print(f"Accuracy : {accuracy_score(y_test, y_pred)*100} %")
+print(f"RMSE : {sqrt(mean_squared_error(y_test, y_pred))}")
